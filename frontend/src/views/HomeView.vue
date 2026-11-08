@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { onMounted } from 'vue';
+import { useRouter } from 'vue-router';
 import { ElButton, ElTag } from 'element-plus';
 import PageHeader from '../components/PageHeader.vue';
 import { fetchHealth } from '../api/health';
@@ -7,6 +8,7 @@ import { useAsync } from '../composables/useAsync';
 import { useAppStore } from '../stores/app';
 
 const app = useAppStore();
+const router = useRouter();
 const { loading, error, data: health, run } = useAsync(fetchHealth);
 
 async function reload(): Promise<void> {
@@ -34,6 +36,13 @@ onMounted(() => {
       <p v-else-if="error" class="error">{{ error }}</p>
       <p v-else class="muted">GET /actuator/health</p>
       <ElButton type="primary" :loading="loading" @click="reload">重新检查</ElButton>
+    </section>
+
+    <section class="card">
+      <div class="row">
+        <span class="label">员工管理</span>
+        <ElButton type="primary" @click="router.push({ name: 'employees' })">进入员工列表</ElButton>
+      </div>
     </section>
   </main>
 </template>

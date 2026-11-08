@@ -1,8 +1,8 @@
 #!/usr/bin/env node
 /**
  * Generic UI smoke via Chrome DevTools Protocol (no npm dependency).
- * Opens the frontend, checks the SPA mounted, and reports console errors.
- * Business-specific flows should be added by the agent in tools/.
+ * Opens the frontend, checks the SPA mounted, then checks the employee list
+ * page and its create dialog, and reports console errors.
  */
 import fs from 'node:fs';
 import path from 'node:path';
@@ -40,6 +40,34 @@ try {
   })`);
   console.log('UI:', JSON.stringify(info));
   if (!info.title && !info.text) failed = true;
+
+  await browser.goto(`${URL}/employees`, { waitMs: 1500 });
+  await browser.waitFor('document.querySelector(".employee-table")', 20000);
+  const table = await browser.evaluate(`(document.querySelector('.employee-table')?.innerText || '')`);
+  console.log('employees table:', table.slice(0, 100).replace(/\s+/g, ' '));
+  if (!table.includes('工号') || !table.includes('姓名') || !table.includes('状态')) failed = true;
+
+  const opened = await browser.evaluate(`(() => {
+    const button = [...document.querySelectorAll('button')].find((el) => el.textContent.includes('新增员工'));
+    if (!button) return false;
+    button.click();
+    return true;
+  })()`);
+  await browser.waitFor('(() => { const d = document.querySelector(".el-dialog"); return Boolean(d && d.offsetParent !== null); })()', 10000);
+  const dialog = await browser.evaluate(`(() => {
+    const el = document.querySelector('.el-dialog');
+    return el ? { inputs: el.querySelectorAll('input').length, text: el.innerText } : null;
+  })()`);
+  console.log('create dialog:', opened, dialog ? `${dialog.inputs} inputs` : 'missing');
+  if (!opened || !dialog || dialog.inputs < 7) failed = true;
+  if (!dialog || !dialog.text.includes('工号') || !dialog.text.includes('姓名') || !dialog.text.includes('状态')) failed = true;
+
+  await browser.evaluate(`(() => {
+    const button = [...document.querySelectorAll('.el-dialog__footer button')].find((el) => el.textContent.trim() === '取消');
+    if (button) button.click();
+    return Boolean(button);
+  })()`);
+
   if (process.env.UI_SMOKE_SCREENSHOT) {
     const file = path.resolve('verify', 'ui-smoke.png');
     fs.mkdirSync(path.dirname(file), { recursive: true });

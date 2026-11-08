@@ -16,4 +16,12 @@ public class BizException extends RuntimeException {
     public int getCode() {
         return code;
     }
+
+    /**
+     * 业务码前三位即 HTTP 状态（如 40401 → 404、40901 → 409），其余按 400 处理。
+     */
+    public int getHttpStatus() {
+        int candidate = code / 100;
+        return candidate >= 400 && candidate <= 599 ? candidate : 400;
+    }
 }
